@@ -1,4 +1,4 @@
-package org.example;
+package org.othello;
 
 import javax.swing.*;
 import javax.swing.border.CompoundBorder;

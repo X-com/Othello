@@ -1,4 +1,4 @@
-package org.example;
+package org.othello;
 
 public class Othello implements ClickAction, GameAction {
 
