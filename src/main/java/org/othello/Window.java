@@ -5,7 +5,6 @@ import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import java.awt.*;
-import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
@@ -19,10 +18,10 @@ public class Window extends JFrame {
     private JLabel infoLabel;
 
     public Window(ClickAction click, GameAction game) {
-        grid[3][3] = 1;
-        grid[4][4] = 1;
-        grid[4][3] = 2;
-        grid[3][4] = 2;
+//        grid[3][3] = 1;
+//        grid[4][4] = 1;
+//        grid[4][3] = 2;
+//        grid[3][4] = 2;
         clickAction = click;
         gameAction = game;
     }
@@ -70,12 +69,17 @@ public class Window extends JFrame {
             jMenuBar.add(file);
 
             JMenuItem player = new JMenuItem("Player vs player");
-            player.addActionListener(this::vsPlayer);
-            JMenuItem ai = new JMenuItem("Player vs AI");
-            ai.addActionListener(this::vsAi);
+            player.addActionListener((e) -> action(1));
+            JMenuItem aiWhite = new JMenuItem("White vs AI");
+            aiWhite.addActionListener((e) -> action(2));
+            JMenuItem aiBlack = new JMenuItem("Black vs AI");
+            aiBlack.addActionListener((e) -> action(3));
 
             file.add(player);
-            file.add(ai);
+            file.add(aiWhite);
+            file.add(aiBlack);
+            file.add(new JSeparator(SwingConstants.HORIZONTAL));
+            file.add(new JLabel("Black always starts"));
 
             infoLabel = new JLabel("Select game mode in File menu.");
 
@@ -92,12 +96,8 @@ public class Window extends JFrame {
         });
     }
 
-    private void vsPlayer(ActionEvent actionEvent) {
-        gameAction.gameState(1);
-    }
-
-    private void vsAi(ActionEvent actionEvent) {
-        gameAction.gameState(2);
+    private void action(int state) {
+        gameAction.gameStart(state);
     }
 
     private void render(Canvas canvas, Graphics2D g) {
@@ -110,11 +110,20 @@ public class Window extends JFrame {
         }
         if (color == 1) {
             g.setColor(Color.BLACK);
+            g.fillOval(2, 2, 46, 46);
         }
         if (color == 2) {
             g.setColor(Color.WHITE);
+            g.fillOval(2, 2, 46, 46);
         }
-        g.fillOval(2, 2, 46, 46);
+        if (color == 3) {
+            g.setColor(Color.BLACK);
+            g.drawOval(2, 2, 46, 46);
+        }
+        if (color == 4) {
+            g.setColor(Color.WHITE);
+            g.drawOval(2, 2, 46, 46);
+        }
         g.dispose();
     }
 
@@ -125,5 +134,9 @@ public class Window extends JFrame {
     public void colorGrid(int x, int y, int player) {
         grid[x][y] = player;
         SwingUtilities.invokeLater(() -> canvasGrid.get(y * 8 + x).repaint());
+    }
+
+    public void setInfo(String s) {
+        if (infoLabel != null) infoLabel.setText(s);
     }
 }
