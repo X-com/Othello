@@ -2,6 +2,9 @@ package org.othello;
 
 import java.awt.*;
 import java.awt.geom.Point2D;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
 
 public class Othello implements ClickAction, GameAction {
@@ -25,6 +28,8 @@ public class Othello implements ClickAction, GameAction {
     public void click(int x, int y) {
         if (gameMode == 1) {
             pvp(x, y);
+        } else if (gameMode > 1) {
+            vsAi(x, y);
         }
     }
 
@@ -34,6 +39,9 @@ public class Othello implements ClickAction, GameAction {
             window.colorGrid(i % 8, i / 8, 0);
             grid[i % 8][i / 8] = 0;
         }
+
+//        testLoadFromFile();
+
         setGridToPlayerColor(3, 3, 2);
         setGridToPlayerColor(4, 4, 2);
         setGridToPlayerColor(4, 3, 1);
@@ -41,19 +49,85 @@ public class Othello implements ClickAction, GameAction {
 
         if (type == 1) {
             window.setInfo("Black Turn");
+            player = 1;
         }
         if (type == 2) {
             window.setInfo("Playing white");
+            player = 2;
+            aiSelects();
         }
         if (type == 3) {
             window.setInfo("Playing black");
+            player = 1;
         }
-        showSelection();
-
         gameMode = type;
+        calculateSelection();
     }
 
-    private void showSelection() {
+    private void testLoadFromFile() {
+        try {
+            File f = new File("D:\\Programmering\\GitKraken\\Othello\\src\\main\\resources\\test3.txt");
+            FileInputStream fs = new FileInputStream(f);
+            String result = new java.io.BufferedReader(new java.io.InputStreamReader(fs)).lines().collect(java.util.stream.Collectors.joining("\n"));
+
+            int y = 0;
+            for (String line : result.split("\n")) {
+                int x = 0;
+                for (String s : line.split(" ")) {
+                    setGridToPlayerColor(x, y, Integer.parseInt(s));
+                    x++;
+                }
+                y++;
+            }
+        } catch (FileNotFoundException e) {
+        }
+    }
+
+    private void pvp(int x, int y) {
+        if (playerMove(x, y, player)) {
+            player = player == 1 ? 2 : 1;
+            calculateSelection();
+
+            if (valid.size() == 0) {
+                findWinner();
+            } else {
+                window.setInfo((player == 1 ? "Black" : "White") + " Turn");
+            }
+        }
+    }
+
+    private void vsAi(int x, int y) {
+        if (playerMove(x, y, player)) {
+            calculateSelection();
+
+            if (valid.size() == 0) {
+                findWinner();
+            } else {
+                aiSelects();
+                calculateSelection();
+            }
+
+            if (valid.size() == 0) {
+                findWinner();
+            }
+        }
+    }
+
+    private void aiSelects() {
+        int ai = player == 1 ? 2 : 1;
+        Point2D p = MinMax.findMove(ai, grid);
+        if (p == null) {
+            gameMode = 0;
+            findWinner();
+            return;
+        }
+        int x = (int) p.getX();
+        int y = (int) p.getY();
+        setGridToPlayerColor(x, y, ai);
+        updateBoard(x, y, ai);
+    }
+
+    private void calculateSelection() {
         for (Point2D p : valid) {
             int x = (int) p.getX();
             int y = (int) p.getY();
@@ -62,6 +136,7 @@ public class Othello implements ClickAction, GameAction {
             }
         }
         valid.clear();
+        if (gameMode == 0) return;
         for (int i = 0; i < 8; i++) {
             for (int j = 0; j < 8; j++) {
                 if (validSelection(i, j, player)) {
@@ -77,27 +152,11 @@ public class Othello implements ClickAction, GameAction {
         window.colorGrid(x, y, player);
     }
 
-    private void pvp(int x, int y) {
-        if (player == 1) {
-            if (validSelection(x, y, player)) {
-                setGridToPlayerColor(x, y, player);
-                updateBoard(x, y, player);
-                player = 2;
-            }
-        } else if (player == 2) {
-            if (validSelection(x, y, player)) {
-                setGridToPlayerColor(x, y, player);
-                updateBoard(x, y, player);
-                player = 1;
-            }
-        }
-        showSelection();
-
-        if (valid.size() == 0) {
-            findWinner();
-        } else {
-            window.setInfo((player == 1 ? "Black" : "White") + " Turn");
-        }
+    private boolean playerMove(int x, int y, int player) {
+        if (!validSelection(x, y, player)) return false;
+        setGridToPlayerColor(x, y, player);
+        updateBoard(x, y, player);
+        return true;
     }
 
     private void findWinner() {
@@ -112,6 +171,7 @@ public class Othello implements ClickAction, GameAction {
                 }
             }
         }
+        gameMode = 0;
         if (black == white) {
             window.setInfo("Draw      Black: " + black + "   White: " + white);
         } else if (black > white) {
@@ -130,6 +190,7 @@ public class Othello implements ClickAction, GameAction {
                 if (dx < 0 || dx > 7) break;
                 if (dy < 0 || dy > 7) break;
                 if (l == 1 && grid[dx][dy] != find) break;
+                if (grid[dx][dy] == 0) break;
                 if (grid[dx][dy] == player) {
                     for (int m = l - 1; m >= 1; m--) {
                         dx = x + dir[k] * m;
@@ -152,6 +213,7 @@ public class Othello implements ClickAction, GameAction {
                 if (dx < 0 || dx > 7) break;
                 if (dy < 0 || dy > 7) break;
                 if (l == 1 && grid[dx][dy] != find) break;
+                if (grid[dx][dy] == 0) break;
                 if (grid[dx][dy] == player) return true;
             }
         }
