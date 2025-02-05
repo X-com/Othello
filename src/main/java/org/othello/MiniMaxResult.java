@@ -21,4 +21,7 @@ public class MiniMaxResult {
     public int getValue(){
         return value;
     }
+    public MiniMaxResult getCopy(){
+        return new MiniMaxResult(this.x, this.y, this.value);
+    }
 }
