@@ -17,7 +17,8 @@ public class Othello implements ClickAction, GameAction {
     private int currentPlayer = 1;  // Current human player 1: Black, 2: White
     private ArrayList<Point> validMoves = new ArrayList<>(); // List of valid moves for currentPlayer
     private int[][] grid = new int[BOARD_SIZE][BOARD_SIZE];  // Board
-    private long turnTime = 500_000_000L;
+    private long turnTime = 250L;
+    private long startTime = 0;
 
     public static void main(String[] args) {
         new Othello().makeWindow();
@@ -54,7 +55,7 @@ public class Othello implements ClickAction, GameAction {
         }
         if (type == 3) {
             window.setInfo("Custom match");
-            runCustomMatch();   
+            runCustomMatch();
             //runNCustomMatches(10);
         }
         eraseValidMoves(validMoves);
@@ -152,7 +153,7 @@ public class Othello implements ClickAction, GameAction {
     }
 
     private void aiPlays() {
-        boolean aiMoved = aiMakesMoveMinMax(currentPlayer == WHITE ? BLACK : WHITE);
+        boolean aiMoved = aiMakesMoveMinMaxIDDFS(currentPlayer == WHITE ? BLACK : WHITE);
         validMoves = calculateCurrentValidMoves(grid, currentPlayer);
         boolean playerCanMove = validMoves.size() != 0;
         if (aiMoved && !playerCanMove) {
@@ -203,15 +204,14 @@ public class Othello implements ClickAction, GameAction {
         int alpha = Integer.MIN_VALUE;
         int beta = Integer.MAX_VALUE;
         Point move = MiniMaxIDDFS(game, alpha, beta); // Searching move 
-        if (move.x >= 0 && move.y >= 0){
-            executePlayerMove(move.x, move.y, IAPlayer);           
+        if (move.x >= 0 && move.y >= 0) {
+            executePlayerMove(move.x, move.y, IAPlayer);
             return true;
-        } 
-        else return false; 
+        } else return false;
     }
 
     public MiniMaxResult MaxValue(GameState game, int alpha, int beta, int depth) {
-        if (depth == 0) {
+        if (depth == 0 || (System.currentTimeMillis() - startTime >= turnTime)) {
             //System.out.println("End of depth");
             int u = getGameScore(game);
             return new MiniMaxResult(-1, -1, u);
@@ -246,7 +246,7 @@ public class Othello implements ClickAction, GameAction {
     }
 
     public MiniMaxResult MinValue(GameState game, int alpha, int beta, int depth) {
-        if (depth == 0) {
+        if (depth == 0 || (System.currentTimeMillis() - startTime >= turnTime)) {
             //System.out.println("End of depth");
             int u = getGameScore(game);
             return new MiniMaxResult(-1, -1, u);
@@ -278,24 +278,24 @@ public class Othello implements ClickAction, GameAction {
         }
         return new MiniMaxResult(bestMove.x, bestMove.y, bestValue);
     }
-    
-    public Point MiniMaxIDDFS(GameState game, int alpha, int beta){
+
+    public Point MiniMaxIDDFS(GameState game, int alpha, int beta) {
         //System.out.println("Starting Minimax Search...");
         //game.printBoard();
         // Time limit on thinking
-        long startTime = System.nanoTime();
+        startTime = System.currentTimeMillis();
         //long duration = 1_000_000_000L;
         int depth = 1;
         MiniMaxResult bestResult = new MiniMaxResult(-1, -1, Integer.MIN_VALUE);
         while (true) {
-            long elapsedTime = System.nanoTime() - startTime;
+            long elapsedTime = System.currentTimeMillis() - startTime;
             if (elapsedTime >= turnTime) break;
             MiniMaxResult result = MaxValue(game.getCopy(), alpha, beta, depth);
-            if (result.getValue() > bestResult.getValue()){
+            if (result.getValue() > bestResult.getValue()) {
                 bestResult = result.getCopy();
             }
             depth++;
-        }        
+        }
         return bestResult.getMove();
     }
 
