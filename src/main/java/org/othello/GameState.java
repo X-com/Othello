@@ -81,7 +81,7 @@ public class GameState {
     public void printBoard() {
         for (int i = 0; i < BOARD_SIZE; i++) {
             for (int j = 0; j < BOARD_SIZE; j++) {
-                switch (grid[i][j]) {
+                switch (grid[j][i]) {
                     case 2:
                         System.out.print("W ");
                         break;
@@ -89,6 +89,7 @@ public class GameState {
                         System.out.print("B ");
                         break;
                     default:
+//                        System.out.print("0 ");
                         System.out.print(grid[i][j] + " ");
                 }
             }

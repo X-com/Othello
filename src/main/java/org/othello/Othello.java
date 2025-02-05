@@ -123,44 +123,42 @@ public class Othello implements ClickAction, GameAction {
     // Action triggered by a click on pvp mode
     private void pvpClick(int x, int y) {
         if (executePlayerMove(x, y, currentPlayer)) { // If the player move has been properly executed
-            currentPlayer = currentPlayer == WHITE ? BLACK : WHITE;
             eraseValidMoves(validMoves);
-            validMoves = calculateCurrentValidMoves(grid, currentPlayer); // Calculate & show valid moves of new player
+            playerPlays();
             paintValidMoves(validMoves, currentPlayer);
-            if (validMoves.size() == 0) {                    // If there are not valid moves
-                currentPlayer = currentPlayer == WHITE ? BLACK : WHITE;   // Turn of the initial player
-                eraseValidMoves(validMoves);
-                validMoves = calculateCurrentValidMoves(grid, currentPlayer);
-                paintValidMoves(validMoves, currentPlayer);
-                if (validMoves.size() == 0) {
-                    findWinner();        // If there are not valid moves, end game
-                }
-            } else {
-                window.setInfo((currentPlayer == BLACK ? "Black" : "White") + " Turn");
-            }
+        }
+    }
+
+    private void playerPlays() {
+        int movesLeft = calculateCurrentValidMoves(grid, currentPlayer).size();
+        currentPlayer = currentPlayer == WHITE ? BLACK : WHITE;
+        window.setInfo((currentPlayer == BLACK ? "Black" : "White") + " Turn");
+        validMoves = calculateCurrentValidMoves(grid, currentPlayer);
+        if (validMoves.size() == 0 && movesLeft > 0) {
+            playerPlays();
+        } else if (validMoves.size() == 0) {
+            findWinner();
         }
     }
 
     // Action triggered by a click against AI
     private void vsAiClick(int x, int y) {
         if (executePlayerMove(x, y, currentPlayer)) {
-            if (!aiMakesMoveMinMax(currentPlayer == WHITE ? BLACK : WHITE)) { // ****
-                // If AI was not able to make a move
-                eraseValidMoves(validMoves);
-                validMoves = calculateCurrentValidMoves(grid, currentPlayer);
-                paintValidMoves(validMoves, currentPlayer);
-                if (validMoves.size() == 0) { // If the player also cannot make a move
-                    findWinner();
-                }
-            }
             eraseValidMoves(validMoves);
-            validMoves = calculateCurrentValidMoves(grid, currentPlayer);
+            aiPlays();
             paintValidMoves(validMoves, currentPlayer);
-            if (validMoves.size() == 0) { // The turn is skiped if there are no valid moves
-                if (!aiMakesMoveMinMax(currentPlayer == WHITE ? BLACK : WHITE)) { // IA plays
-                    findWinner();
-                }
-            }
+        }
+    }
+
+    private void aiPlays() {
+        boolean aiMoved = aiMakesMoveMinMax(currentPlayer == WHITE ? BLACK : WHITE);
+        validMoves = calculateCurrentValidMoves(grid, currentPlayer);
+        boolean playerCanMove = validMoves.size() != 0;
+        if (aiMoved && !playerCanMove) {
+            System.out.println("ai moves again");
+            aiPlays();
+        } else if (!aiMoved && !playerCanMove) {
+            findWinner();
         }
     }
 
@@ -200,9 +198,13 @@ public class Othello implements ClickAction, GameAction {
     }
 
     public MiniMaxResult MaxValue(GameState game, int alpha, int beta, int depth) {
+        if (depth == 0) {
+            int u = getGameScore(game);
+            return new MiniMaxResult(-1, -1, u);
+        }
         ArrayList<Point> moves = calculateCurrentValidMoves(game.getGrid(), game.getPlayer());
         //System.out.println("Maximizing...");
-        if (moves.isEmpty() || depth == 0) {
+        if (moves.isEmpty()) {
             int u = getGameScore(game);
             return new MiniMaxResult(-1, -1, u);
         }
@@ -213,25 +215,29 @@ public class Othello implements ClickAction, GameAction {
             g.executeMove(move.x, move.y);
             g.changeTurn();
             //g.printBoard();
+
             MiniMaxResult result = MinValue(g, alpha, beta, depth - 1);
-            if (result.getValue() > alpha) {
-                alpha = result.getValue();
-            }
-            if (alpha >= beta) {
-                break;
-            }
+
             if (bestValue < result.getValue()) {
                 bestValue = result.getValue();
                 bestMove = move;
+                alpha = Math.max(alpha, result.getValue());
+            }
+            if (bestValue >= beta) {
+                break;
             }
         }
         return new MiniMaxResult(bestMove.x, bestMove.y, bestValue);
     }
 
     public MiniMaxResult MinValue(GameState game, int alpha, int beta, int depth) {
+        if (depth == 0) {
+            int u = getGameScore(game);
+            return new MiniMaxResult(-1, -1, u);
+        }
         ArrayList<Point> moves = calculateCurrentValidMoves(game.getGrid(), game.getPlayer());
         //System.out.println("Minimizing...");
-        if (moves.isEmpty() || depth == 0) {
+        if (moves.isEmpty()) {
             int u = getGameScore(game);
             return new MiniMaxResult(-1, -1, u);
         }
@@ -243,16 +249,14 @@ public class Othello implements ClickAction, GameAction {
             g.changeTurn();
             //g.printBoard();
             MiniMaxResult result = MaxValue(g, alpha, beta, depth - 1);
-            if (result.getValue() < beta) {
-                beta = result.getValue();
-            }
-            if (alpha >= beta) {
-                //System.out.println("Prunning at depth " + depth);
-                break;
-            }
+
             if (bestValue > result.getValue()) {
                 bestValue = result.getValue();
                 bestMove = move;
+                beta = Math.min(beta, result.getValue());
+            }
+            if (bestValue <= alpha) {
+                break;
             }
         }
         return new MiniMaxResult(bestMove.x, bestMove.y, bestValue);
