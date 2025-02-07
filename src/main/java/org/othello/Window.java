@@ -71,7 +71,7 @@ public class Window extends JFrame {
             aiWhite.addActionListener((e) -> action(2));
             JMenuItem aiBlack = new JMenuItem("Black vs AI");
             aiBlack.addActionListener((e) -> action(3));
-            JMenuItem aivsai = new JMenuItem("AI MinMax vs AI random (WARNING! slow)");
+            JMenuItem aivsai = new JMenuItem("AI MinMax(black) vs AI random(white) (WARNING! slow)");
             aivsai.addActionListener((e) -> action(4));
 
             file.add(player);
