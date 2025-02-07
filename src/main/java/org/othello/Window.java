@@ -9,6 +9,9 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 
+/**
+ * Basic swing GUI interface for the game.
+ */
 public class Window extends JFrame {
 
     private final ArrayList<Canvas> canvasGrid = new ArrayList<>();

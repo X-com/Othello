@@ -2,6 +2,9 @@ package org.othello;
 
 import java.awt.Point;
 
+/**
+ * Simple method to store state of the MinMax values
+ */
 public class MiniMaxResult {
     private final int x;
     private final int y;

@@ -3,6 +3,9 @@ package org.othello;
 import java.awt.Point;
 import java.util.ArrayList;
 
+/**
+ * Main logic of Othello with Min-Max search implemented in this class.
+ */
 public class Othello implements ClickAction, GameAction {
     private static final long TURN_TIME_MILLISECONDS = 250L;
 
@@ -25,7 +28,12 @@ public class Othello implements ClickAction, GameAction {
         window.make();
     }
 
-    // Window Click Action
+    /**
+     * Click method for when player clicks on a square on the game board.
+     *
+     * @param x X value, square the player clicked on.
+     * @param y Y value, square the player clicked on.
+     */
     @Override
     public void click(int x, int y) {
         if (gameMode == 1) {
@@ -35,10 +43,20 @@ public class Othello implements ClickAction, GameAction {
         }
     }
 
-    // Game Start Action: Initializes board and calculates possible moves for first player
+    /**
+     * Called when starting a new game.
+     *
+     * @param type The type of game the player have chosen to play.
+     *             type:
+     *             1: Player vs player
+     *             2: White vs AI
+     *             3: Black vs AI
+     *             4: AI minmax vs AI random
+     */
     @Override
-    public void gameStart(int type) { // (type: 1: Player vs player, 2: White vs AI, 3: Black vs AI)
-        initializeBoard(type);
+    public void gameStart(int type) {
+        initializeBoard();
+        gameMode = type;
         if (type == 1) {
             window.setInfo("Black Turn");
             currentPlayer = BLACK;
@@ -46,7 +64,7 @@ public class Othello implements ClickAction, GameAction {
         if (type == 2) {
             window.setInfo("Playing White Against AI");
             currentPlayer = WHITE;
-            aiMakesMoveMinMaxIDDFS(BLACK);
+            aiMakesMoveMinMax(BLACK);
         }
         if (type == 3) {
             window.setInfo("Playing Black Against AI");
@@ -61,7 +79,10 @@ public class Othello implements ClickAction, GameAction {
         paintValidMoves(validMoves, currentPlayer);
     }
 
-    private void initializeBoard(int type) {
+    /**
+     * Resets the display board and internal states and places the initial black and white tiles.
+     */
+    private void initializeBoard() {
         for (int i = 0; i < BOARD_SIZE * BOARD_SIZE; i++) {
             window.colorGrid(i % 8, i / 8, EMPTY);
             grid[i % 8][i / 8] = EMPTY;
@@ -70,11 +91,14 @@ public class Othello implements ClickAction, GameAction {
         setGridToPlayerColor(4, 4, WHITE);
         setGridToPlayerColor(4, 3, BLACK);
         setGridToPlayerColor(3, 4, BLACK);
-
-        gameMode = type;
     }
 
-    // Action triggered by a click on pvp mode
+    /**
+     * Player vs player method, called when one player have played its turn.
+     *
+     * @param x X value, square the player clicked on.
+     * @param y Y value, square the player clicked on.
+     */
     private void pvpClick(int x, int y) {
         if (executePlayerMove(x, y, currentPlayer)) { // If the player move has been properly executed
             eraseValidMoves(validMoves);
@@ -83,6 +107,9 @@ public class Othello implements ClickAction, GameAction {
         }
     }
 
+    /**
+     * Helper method for player vs player
+     */
     private void playerPlays() {
         int movesLeft = calculateCurrentValidMoves(grid, currentPlayer).size();
         currentPlayer = currentPlayer == WHITE ? BLACK : WHITE;
@@ -95,7 +122,12 @@ public class Othello implements ClickAction, GameAction {
         }
     }
 
-    // Action triggered by a click against AI
+    /**
+     * Player vs AI method, called when one player have played its turn and the AI needs to play its turn.
+     *
+     * @param x X value, square the player clicked on.
+     * @param y Y value, square the player clicked on.
+     */
     private void vsAiClick(int x, int y) {
         if (executePlayerMove(x, y, currentPlayer)) {
             eraseValidMoves(validMoves);
@@ -104,8 +136,11 @@ public class Othello implements ClickAction, GameAction {
         }
     }
 
+    /**
+     * Helper method for player vs AI
+     */
     private void aiPlays() {
-        boolean aiMoved = aiMakesMoveMinMaxIDDFS(currentPlayer == WHITE ? BLACK : WHITE);
+        boolean aiMoved = aiMakesMoveMinMax(currentPlayer == WHITE ? BLACK : WHITE);
         validMoves = calculateCurrentValidMoves(grid, currentPlayer);
         boolean playerCanMove = validMoves.size() != 0;
         if (aiMoved && !playerCanMove) {
@@ -116,11 +151,17 @@ public class Othello implements ClickAction, GameAction {
         }
     }
 
-    private boolean aiMakesMoveMinMaxIDDFS(int IAPlayer) {
+    /**
+     * Calculates and does the optimal move for AI using Min-Max search with alpha-beta pruning.
+     *
+     * @param IAPlayer What color the AI should play as.
+     * @return True if AI can make a move on the board.
+     */
+    private boolean aiMakesMoveMinMax(int IAPlayer) {
         GameState game = new GameState(grid, IAPlayer, IAPlayer);
         int alpha = Integer.MIN_VALUE;
         int beta = Integer.MAX_VALUE;
-        Point move = MiniMaxIDDFS(game, alpha, beta); // Searching move 
+        Point move = MiniMax(game, alpha, beta); // Searching move
         if (move.x >= 0 && move.y >= 0) {
             executePlayerMove(move.x, move.y, IAPlayer);
             return true;
@@ -129,7 +170,16 @@ public class Othello implements ClickAction, GameAction {
         }
     }
 
-    public Point MiniMaxIDDFS(GameState game, int alpha, int beta) {
+    /**
+     * The Min-Max search with alpha-beta pruning algorithm and increase depth search.
+     * This is the top level method that calculates the optimal AI move.
+     *
+     * @param game  Game state object.
+     * @param alpha Alpha value for pruning
+     * @param beta  Beta value for pruning
+     * @return The board position the AI should make or returns (-1, -1) if none exists.
+     */
+    public Point MiniMax(GameState game, int alpha, int beta) {
         startTime = System.currentTimeMillis();
         int depth = 1;
         MiniMaxResult bestResult = new MiniMaxResult(-1, -1, Integer.MIN_VALUE);
@@ -146,6 +196,15 @@ public class Othello implements ClickAction, GameAction {
         return bestResult.getMove();
     }
 
+    /**
+     * Method to get the best possible score from the available possible moves.
+     *
+     * @param game  Game state object.
+     * @param alpha Alpha value for pruning
+     * @param beta  Beta value for pruning
+     * @param depth The current depth in the min-max search
+     * @return The position on the board that gives MAX score. If none exists returns (-1,-1).
+     */
     public MiniMaxResult MaxValue(GameState game, int alpha, int beta, int depth) {
         if (depth == 0 || searchTimeExpired()) {
             return new MiniMaxResult(-1, -1, game.getGameScore());
@@ -175,6 +234,13 @@ public class Othello implements ClickAction, GameAction {
         return new MiniMaxResult(bestMove.x, bestMove.y, bestValue);
     }
 
+    /**
+     * @param game  Game state object.
+     * @param alpha Alpha value for pruning
+     * @param beta  Beta value for pruning
+     * @param depth The current depth in the min-max search
+     * @return The position on the board that gives MIN score. If none exists returns (-1,-1).
+     */
     public MiniMaxResult MinValue(GameState game, int alpha, int beta, int depth) {
         if (depth == 0 || searchTimeExpired()) {
             return new MiniMaxResult(-1, -1, game.getGameScore());
@@ -203,11 +269,16 @@ public class Othello implements ClickAction, GameAction {
         return new MiniMaxResult(bestMove.x, bestMove.y, bestValue);
     }
 
+    /**
+     * Method to check the total elapsed time sense starting the search.
+     *
+     * @return True if search time have expired.
+     */
     private boolean searchTimeExpired() {
         return System.currentTimeMillis() - startTime >= TURN_TIME_MILLISECONDS;
     }
 
-    /*
+    /**
      * Calculates all possible valid movements for the current player
      */
     public ArrayList<Point> calculateCurrentValidMoves(int[][] grid, int player) {
@@ -222,14 +293,18 @@ public class Othello implements ClickAction, GameAction {
         return validMovesCalculated;
     }
 
-    // Paints valid moves on board
+    /**
+     * Paints valid moves on board
+     */
     public void paintValidMoves(ArrayList<Point> validMoves, int player) {
         for (Point p : validMoves) {
             window.colorGrid((int) p.getX(), (int) p.getY(), player + 2);
         }
     }
 
-    // Erases valid moves on board
+    /**
+     * Erases valid moves on board
+     */
     public void eraseValidMoves(ArrayList<Point> validMoves) {
         for (Point p : validMoves) {
             int x = p.x;
@@ -241,13 +316,17 @@ public class Othello implements ClickAction, GameAction {
         validMoves.clear();
     }
 
-    // Updates grid and colours board on (x,y)
+    /**
+     * Updates grid and colours board on (x,y)
+     */
     private void setGridToPlayerColor(int x, int y, int player) {
         grid[x][y] = player;
         window.colorGrid(x, y, player);
     }
 
-    // Tries to execute a player move. If possible paints board and updates grid
+    /**
+     * Tries to execute a player move. If possible paints board and updates grid
+     */
     private boolean executePlayerMove(int x, int y, int player) {
         if (!validMove(grid, x, y, player)) {
             return false;
@@ -257,7 +336,7 @@ public class Othello implements ClickAction, GameAction {
         return true;
     }
 
-    /*
+    /**
      * Counts disks on board, stops game and announces winner
      */
     private int getWinner() {
@@ -288,8 +367,8 @@ public class Othello implements ClickAction, GameAction {
         }
     }
 
-    /*
-     * Updates board after a disk has been placed in postion (x,y)
+    /**
+     * Updates board after a disk has been placed in position (x,y)
      */
     private void updateBoard(int x, int y, int player) {
         for (int[] dir : DIRECTIONS) {
@@ -297,8 +376,8 @@ public class Othello implements ClickAction, GameAction {
         }
     }
 
-    /*
-     * Recusively explores a path to flip the disks according to a player move
+    /**
+     * Recursively explores a path to flip the disks according to a player move
      */
     private boolean recursiveWalk(int x, int y, int[] dir, int player) {
         if (!withinBoard(x, y) || grid[x][y] == EMPTY) {
@@ -315,7 +394,9 @@ public class Othello implements ClickAction, GameAction {
         return false;
     }
 
-    // Calculates if a cell in the grid is a valid move for a player
+    /**
+     * Calculates if a cell in the grid is a valid move for a player
+     */
     private boolean validMove(int[][] grid, int x, int y, int player) {
         /*
          * A move for player A is valid if:
@@ -345,10 +426,17 @@ public class Othello implements ClickAction, GameAction {
         return false;
     }
 
+    /**
+     * Checks if a position is within the game board.
+     */
     public boolean withinBoard(int x, int y) {
         return x < BOARD_SIZE && x >= 0 && y < BOARD_SIZE && y >= 0;
     }
 
+    /**
+     * Method to simulate an AI with minmax algorithm playing against
+     * an AI that randomly chooses a valid move it can make.
+     */
     private void simulationAiMinMaxVsAiRandom() {
         boolean a, b;
         boolean passFlagA, passFlagB;
@@ -357,7 +445,7 @@ public class Othello implements ClickAction, GameAction {
             if (a == false) passFlagA = true;
             else passFlagA = false;
 
-            b = aiMakesMoveMinMaxIDDFS(BLACK);
+            b = aiMakesMoveMinMax(BLACK);
             if (b == false) passFlagB = true;
             else passFlagB = false;
 
@@ -367,6 +455,12 @@ public class Othello implements ClickAction, GameAction {
         }
     }
 
+    /**
+     * Method for AI that does a random choice out of all possible moves it can make.
+     *
+     * @param IAPlayer The color of the AI making the move.
+     * @return True if AI can play a move on the board.
+     */
     private boolean aiMakesMoveRandom(int IAPlayer) {
         eraseValidMoves(validMoves);
         validMoves = calculateCurrentValidMoves(grid, IAPlayer);
