@@ -11,17 +11,13 @@ import java.util.ArrayList;
 
 public class Window extends JFrame {
 
-    private ArrayList<Canvas> canvasGrid = new ArrayList<>();
-    private int[][] grid = new int[8][8];
-    private ClickAction clickAction;
-    private GameAction gameAction;
+    private final ArrayList<Canvas> canvasGrid = new ArrayList<>();
+    private final int[][] grid = new int[8][8];
+    private final ClickAction clickAction;
+    private final GameAction gameAction;
     private JLabel infoLabel;
 
     public Window(ClickAction click, GameAction game) {
-//        grid[3][3] = 1;
-//        grid[4][4] = 1;
-//        grid[4][3] = 2;
-//        grid[3][4] = 2;
         clickAction = click;
         gameAction = game;
     }
@@ -49,8 +45,6 @@ public class Window extends JFrame {
                     public void mousePressed(MouseEvent me) {
                         SwingUtilities.invokeLater(() -> {
                             if (me.getButton() == 1) {
-//                                int x = (int) ((me.getX() / (float) canvas.getWidth()) * 8);
-//                                int y = (int) ((me.getY() / (float) canvas.getHeight()) * 8);
                                 mouseClickedAt(index % 8, index / 8);
                             }
                         });
@@ -74,10 +68,13 @@ public class Window extends JFrame {
             aiWhite.addActionListener((e) -> action(2));
             JMenuItem aiBlack = new JMenuItem("Black vs AI");
             aiBlack.addActionListener((e) -> action(3));
+            JMenuItem aivsai = new JMenuItem("AI MinMax vs AI random (WARNING! slow)");
+            aivsai.addActionListener((e) -> action(4));
 
             file.add(player);
             file.add(aiWhite);
             file.add(aiBlack);
+            file.add(aivsai);
             file.add(new JSeparator(SwingConstants.HORIZONTAL));
             file.add(new JLabel("Black always starts"));
 

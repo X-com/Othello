@@ -2,9 +2,8 @@ package org.othello;
 
 public class GameState {
     private int currentPlayer;
-    private int[][] grid;
-    private boolean isOver;
-    private int maximizer;
+    private final int[][] grid;
+    private final int maximizer;
 
     public static final int BOARD_SIZE = 8;
     public static final int[][] DIRECTIONS = {{1, 0}, {1, 1}, {0, 1}, {-1, 1}, {-1, 0}, {-1, -1}, {0, -1}, {1, -1}};
@@ -16,13 +15,11 @@ public class GameState {
             this.grid[i] = grid[i].clone();
         }
         this.currentPlayer = currentPlayer;
-        this.isOver = false;
         this.maximizer = maximizer;
     }
 
     public GameState getCopy() {
-        GameState g = new GameState(grid, currentPlayer, maximizer);
-        return g;
+        return new GameState(grid, currentPlayer, maximizer);
     }
 
     public int getPlayer() {
@@ -50,10 +47,6 @@ public class GameState {
         currentPlayer = currentPlayer == WHITE ? BLACK : WHITE;
     }
 
-    public boolean isOver() {
-        return isOver;
-    }
-
     public int getMaximizer() {
         return maximizer;
     }
@@ -78,19 +71,27 @@ public class GameState {
         return x < BOARD_SIZE && x >= 0 && y < BOARD_SIZE && y >= 0;
     }
 
+    public int getGameScore() {
+        int blackCounter = 0, whiteCounter = 0;
+        for (int i = 0; i < BOARD_SIZE; i++) {
+            for (int j = 0; j < BOARD_SIZE; j++) {
+                if (getCell(i, j) == BLACK) {
+                    blackCounter++;
+                } else if (getCell(i, j) == WHITE) {
+                    whiteCounter++;
+                }
+            }
+        }
+        return getMaximizer() == WHITE ? whiteCounter - blackCounter : blackCounter - whiteCounter;
+    }
+
     public void printBoard() {
         for (int i = 0; i < BOARD_SIZE; i++) {
             for (int j = 0; j < BOARD_SIZE; j++) {
                 switch (grid[j][i]) {
-                    case 2:
-                        System.out.print("W ");
-                        break;
-                    case 1:
-                        System.out.print("B ");
-                        break;
-                    default:
-//                        System.out.print("0 ");
-                        System.out.print(grid[i][j] + " ");
+                    case 2 -> System.out.print("W ");
+                    case 1 -> System.out.print("B ");
+                    default -> System.out.print(grid[i][j] + " ");
                 }
             }
             System.out.print("\n");

@@ -1,23 +1,20 @@
 package org.othello;
 
 import java.awt.Point;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.util.ArrayList;
 
 public class Othello implements ClickAction, GameAction {
+    private static final long TURN_TIME_MILLISECONDS = 250L;
+
     public static final int BOARD_SIZE = 8;
     public static final int[][] DIRECTIONS = {{1, 0}, {1, 1}, {0, 1}, {-1, 1}, {-1, 0}, {-1, -1}, {0, -1}, {1, -1}};
     private static final int BLACK = 1, EMPTY = 0, WHITE = 2;
-    private static final int DEPTH = 10;
 
-    private Window window = new Window(this, this);
+    private final Window window = new Window(this, this);
     private int gameMode = 0; // 0: Game not started,  1: Player vs player, 2: White vs AI, 3: Black vs AI
     private int currentPlayer = 1;  // Current human player 1: Black, 2: White
     private ArrayList<Point> validMoves = new ArrayList<>(); // List of valid moves for currentPlayer
-    private int[][] grid = new int[BOARD_SIZE][BOARD_SIZE];  // Board
-    private long turnTime = 250L;
+    private final int[][] grid = new int[BOARD_SIZE][BOARD_SIZE];  // Board
     private long startTime = 0;
 
     public static void main(String[] args) {
@@ -47,16 +44,17 @@ public class Othello implements ClickAction, GameAction {
             currentPlayer = BLACK;
         }
         if (type == 2) {
-            window.setInfo("Playing White Against Computer");
+            window.setInfo("Playing White Against AI");
             currentPlayer = WHITE;
-            // Initial move:
-            //aiMakesMove(currentPlayer == WHITE ? BLACK : WHITE);
-            aiMakesMoveMinMax(currentPlayer == WHITE ? BLACK : WHITE);
+            aiMakesMoveMinMaxIDDFS(BLACK);
         }
         if (type == 3) {
-            window.setInfo("Custom match");
-            runCustomMatch();
-            //runNCustomMatches(10);
+            window.setInfo("Playing Black Against AI");
+            currentPlayer = BLACK;
+        }
+        if (type == 4) {
+            simulationAiMinMaxVsAiRandom();
+            return;
         }
         eraseValidMoves(validMoves);
         validMoves = calculateCurrentValidMoves(grid, currentPlayer);
@@ -68,58 +66,12 @@ public class Othello implements ClickAction, GameAction {
             window.colorGrid(i % 8, i / 8, EMPTY);
             grid[i % 8][i / 8] = EMPTY;
         }
-//        testLoadFromFile();
         setGridToPlayerColor(3, 3, WHITE);
         setGridToPlayerColor(4, 4, WHITE);
         setGridToPlayerColor(4, 3, BLACK);
         setGridToPlayerColor(3, 4, BLACK);
 
         gameMode = type;
-    }
-
-    private void runCustomMatch() {
-        boolean a, b;
-        boolean passFlagA = false, passFlagB = false;
-        while (gameMode != 0) {
-            a = aiMakesMoveRandom(WHITE);
-            if (a == false) passFlagA = true;
-            else passFlagA = false;
-
-            b = aiMakesMoveMinMax(BLACK);
-            if (b == false) passFlagB = true;
-            else passFlagB = false;
-
-            if (passFlagA && passFlagB) { // If no player was able to make a move
-                findWinner();
-            }
-        }
-    }
-
-    private void runNCustomMatches(int matches) {
-        boolean white, black;
-        boolean passFlagW = false, passFlagB = false;
-        int counterW = 0, counterB = 0;
-        for (int i = 0; i < matches; i++) {
-            initializeBoard(3);
-
-            while (gameMode != 0) {
-                white = aiMakesMoveRandom(WHITE);
-                if (white == false) passFlagW = true;
-                else passFlagW = false;
-
-                black = aiMakesMoveMinMaxIDDFS(BLACK);
-                if (black == false) passFlagB = true;
-                else passFlagB = false;
-
-                if (passFlagW && passFlagB) { // If no player was able to make a move
-                    int winner = findWinner();
-                    if (winner == BLACK) counterB++;
-                    if (winner == WHITE) counterW++;
-                }
-            }
-        }
-        System.out.println("White Wins = " + counterW + " (" + (double) counterW / (counterW + counterB) * 100 + "%) " + "Black Wins = " + counterB + " (" + (double) counterB / (counterW + counterB) * 100 + "%) ");
-
     }
 
     // Action triggered by a click on pvp mode
@@ -139,7 +91,7 @@ public class Othello implements ClickAction, GameAction {
         if (validMoves.size() == 0 && movesLeft > 0) {
             playerPlays();
         } else if (validMoves.size() == 0) {
-            findWinner();
+            getWinner();
         }
     }
 
@@ -160,42 +112,7 @@ public class Othello implements ClickAction, GameAction {
             System.out.println("ai moves again");
             aiPlays();
         } else if (!aiMoved && !playerCanMove) {
-            findWinner();
-        }
-    }
-
-    private boolean aiMakesMoveRandom(int IAPlayer) {
-        eraseValidMoves(validMoves);
-        validMoves = calculateCurrentValidMoves(grid, IAPlayer);
-        if (validMoves.size() == 0) // No legal move is possible
-            return false;
-        // Choose randomly
-        int randomIndex = (int) (Math.random() * validMoves.size());
-        Point randomMove = validMoves.get(randomIndex);
-        int x = randomMove.x, y = randomMove.y;
-
-        executePlayerMove(x, y, IAPlayer);
-        char xChar = (char) (x + 'A');
-        y++;
-        window.setInfo("Last IA move: " + y + xChar);
-        return true;
-    }
-
-    // Executes a MiniMax move
-    private boolean aiMakesMoveMinMax(int ai) {
-        GameState game = new GameState(grid, ai, ai);
-        int alpha = Integer.MIN_VALUE;
-        int beta = Integer.MAX_VALUE;
-        MiniMaxResult result = MaxValue(game.getCopy(), alpha, beta, DEPTH);
-        Point move = result.getMove();
-        if (move.x >= 0 && move.y >= 0) {
-            executePlayerMove(move.x, move.y, ai);
-            char xChar = (char) (move.x + 'A');
-            move.y++;
-            window.setInfo("Last IA move: " + move.y + xChar);
-            return true;
-        } else {
-            return false;
+            getWinner();
         }
     }
 
@@ -207,21 +124,35 @@ public class Othello implements ClickAction, GameAction {
         if (move.x >= 0 && move.y >= 0) {
             executePlayerMove(move.x, move.y, IAPlayer);
             return true;
-        } else return false;
+        } else {
+            return false;
+        }
+    }
+
+    public Point MiniMaxIDDFS(GameState game, int alpha, int beta) {
+        startTime = System.currentTimeMillis();
+        int depth = 1;
+        MiniMaxResult bestResult = new MiniMaxResult(-1, -1, Integer.MIN_VALUE);
+        while (true) {
+            MiniMaxResult result = MaxValue(game.getCopy(), alpha, beta, depth);
+            if (searchTimeExpired()) {
+                break;
+            }
+            if (result.getValue() > bestResult.getValue()) {
+                bestResult = result;
+            }
+            depth++;
+        }
+        return bestResult.getMove();
     }
 
     public MiniMaxResult MaxValue(GameState game, int alpha, int beta, int depth) {
-        if (depth == 0 || (System.currentTimeMillis() - startTime >= turnTime)) {
-            //System.out.println("End of depth");
-            int u = getGameScore(game);
-            return new MiniMaxResult(-1, -1, u);
+        if (depth == 0 || searchTimeExpired()) {
+            return new MiniMaxResult(-1, -1, game.getGameScore());
         }
         ArrayList<Point> moves = calculateCurrentValidMoves(game.getGrid(), game.getPlayer());
-        //System.out.println("Maximizing...");
         if (moves.isEmpty()) {
-            //System.out.println("End of game reached");
-            int u = getGameScore(game);
-            return new MiniMaxResult(-1, -1, u);
+            return new MiniMaxResult(-1, -1, game.getGameScore());
         }
         Point bestMove = new Point(-1, -1);
         int bestValue = Integer.MIN_VALUE;
@@ -229,7 +160,6 @@ public class Othello implements ClickAction, GameAction {
             GameState g = game.getCopy();
             g.executeMove(move.x, move.y);
             g.changeTurn();
-            //g.printBoard();
 
             MiniMaxResult result = MinValue(g, alpha, beta, depth - 1);
 
@@ -246,17 +176,12 @@ public class Othello implements ClickAction, GameAction {
     }
 
     public MiniMaxResult MinValue(GameState game, int alpha, int beta, int depth) {
-        if (depth == 0 || (System.currentTimeMillis() - startTime >= turnTime)) {
-            //System.out.println("End of depth");
-            int u = getGameScore(game);
-            return new MiniMaxResult(-1, -1, u);
+        if (depth == 0 || searchTimeExpired()) {
+            return new MiniMaxResult(-1, -1, game.getGameScore());
         }
         ArrayList<Point> moves = calculateCurrentValidMoves(game.getGrid(), game.getPlayer());
-        //System.out.println("Minimizing...");
         if (moves.isEmpty()) {
-            //System.out.println("End of game reached");
-            int u = getGameScore(game);
-            return new MiniMaxResult(-1, -1, u);
+            return new MiniMaxResult(-1, -1, game.getGameScore());
         }
         Point bestMove = new Point(-1, -1);
         int bestValue = Integer.MAX_VALUE;
@@ -264,7 +189,6 @@ public class Othello implements ClickAction, GameAction {
             GameState g = game.getCopy();
             g.executeMove(move.x, move.y);
             g.changeTurn();
-            //g.printBoard();
             MiniMaxResult result = MaxValue(g, alpha, beta, depth - 1);
 
             if (bestValue > result.getValue()) {
@@ -279,39 +203,8 @@ public class Othello implements ClickAction, GameAction {
         return new MiniMaxResult(bestMove.x, bestMove.y, bestValue);
     }
 
-    public Point MiniMaxIDDFS(GameState game, int alpha, int beta) {
-        //System.out.println("Starting Minimax Search...");
-        //game.printBoard();
-        // Time limit on thinking
-        startTime = System.currentTimeMillis();
-        //long duration = 1_000_000_000L;
-        int depth = 1;
-        MiniMaxResult bestResult = new MiniMaxResult(-1, -1, Integer.MIN_VALUE);
-        while (true) {
-            long elapsedTime = System.currentTimeMillis() - startTime;
-            if (elapsedTime >= turnTime) break;
-            MiniMaxResult result = MaxValue(game.getCopy(), alpha, beta, depth);
-            if (result.getValue() > bestResult.getValue()) {
-                bestResult = result.getCopy();
-            }
-            depth++;
-        }
-        return bestResult.getMove();
-    }
-
-
-    public int getGameScore(GameState game) { // EVAL function
-        int blackCounter = 0, whiteCounter = 0;
-        for (int i = 0; i < BOARD_SIZE; i++) {
-            for (int j = 0; j < BOARD_SIZE; j++) {
-                if (game.getCell(i, j) == BLACK) {
-                    blackCounter++;
-                } else if (game.getCell(i, j) == WHITE) {
-                    whiteCounter++;
-                }
-            }
-        }
-        return game.getMaximizer() == WHITE ? whiteCounter - blackCounter : blackCounter - whiteCounter;
+    private boolean searchTimeExpired() {
+        return System.currentTimeMillis() - startTime >= TURN_TIME_MILLISECONDS;
     }
 
     /*
@@ -356,7 +249,9 @@ public class Othello implements ClickAction, GameAction {
 
     // Tries to execute a player move. If possible paints board and updates grid
     private boolean executePlayerMove(int x, int y, int player) {
-        if (!validMove(grid, x, y, player)) return false;
+        if (!validMove(grid, x, y, player)) {
+            return false;
+        }
         setGridToPlayerColor(x, y, player);
         updateBoard(x, y, player);
         return true;
@@ -365,7 +260,7 @@ public class Othello implements ClickAction, GameAction {
     /*
      * Counts disks on board, stops game and announces winner
      */
-    private int findWinner() {
+    private int getWinner() {
         int blackCounter = 0;
         int whiteCounter = 0;
         for (int i = 0; i < BOARD_SIZE; i++) {
@@ -406,8 +301,12 @@ public class Othello implements ClickAction, GameAction {
      * Recusively explores a path to flip the disks according to a player move
      */
     private boolean recursiveWalk(int x, int y, int[] dir, int player) {
-        if (!withinBoard(x, y) || grid[x][y] == EMPTY) return false;
-        if (grid[x][y] == player) return true;
+        if (!withinBoard(x, y) || grid[x][y] == EMPTY) {
+            return false;
+        }
+        if (grid[x][y] == player) {
+            return true;
+        }
 
         if (recursiveWalk(x + dir[0], y + dir[1], dir, player)) {
             setGridToPlayerColor(x, y, player);
@@ -423,19 +322,25 @@ public class Othello implements ClickAction, GameAction {
          * 1. A path can be formed that changes one or more disks of player B
          * 2. The path must contain only the other player B's disks and stops when it reaches the first player A's disk
          */
-        if (grid[x][y] != EMPTY) return false;
+        if (grid[x][y] != EMPTY) {
+            return false;
+        }
         int opponent = (player == BLACK) ? WHITE : BLACK;
 
         for (int[] dir : DIRECTIONS) {
             int dx = x + dir[0], dy = y + dir[1];
 
-            if (!withinBoard(dx, dy) || grid[dx][dy] != opponent) continue;
+            if (!withinBoard(dx, dy) || grid[dx][dy] != opponent) {
+                continue;
+            }
 
             while (withinBoard(dx, dy) && grid[dx][dy] == opponent) {
                 dx += dir[0];
                 dy += dir[1];
             }
-            if (withinBoard(dx, dy) && grid[dx][dy] == player) return true;
+            if (withinBoard(dx, dy) && grid[dx][dy] == player) {
+                return true;
+            }
         }
         return false;
     }
@@ -444,23 +349,38 @@ public class Othello implements ClickAction, GameAction {
         return x < BOARD_SIZE && x >= 0 && y < BOARD_SIZE && y >= 0;
     }
 
-    private void testLoadFromFile() {
-        try {
-            File f = new File("D:\\Programmering\\GitKraken\\Othello\\src\\main\\resources\\test3.txt");
-            FileInputStream fs = new FileInputStream(f);
-            String result = new java.io.BufferedReader(new java.io.InputStreamReader(fs)).lines().collect(java.util.stream.Collectors.joining("\n"));
+    private void simulationAiMinMaxVsAiRandom() {
+        boolean a, b;
+        boolean passFlagA, passFlagB;
+        while (gameMode != 0) {
+            a = aiMakesMoveRandom(WHITE);
+            if (a == false) passFlagA = true;
+            else passFlagA = false;
 
-            int y = 0;
-            for (String line : result.split("\n")) {
-                int x = 0;
-                for (String s : line.split(" ")) {
-                    setGridToPlayerColor(x, y, Integer.parseInt(s));
-                    x++;
-                }
-                y++;
+            b = aiMakesMoveMinMaxIDDFS(BLACK);
+            if (b == false) passFlagB = true;
+            else passFlagB = false;
+
+            if (passFlagA && passFlagB) { // If no player was able to make a move
+                getWinner();
             }
-        } catch (FileNotFoundException e) {
         }
     }
 
+    private boolean aiMakesMoveRandom(int IAPlayer) {
+        eraseValidMoves(validMoves);
+        validMoves = calculateCurrentValidMoves(grid, IAPlayer);
+        if (validMoves.size() == 0) // No legal move is possible
+            return false;
+        // Choose randomly
+        int randomIndex = (int) (Math.random() * validMoves.size());
+        Point randomMove = validMoves.get(randomIndex);
+        int x = randomMove.x, y = randomMove.y;
+
+        executePlayerMove(x, y, IAPlayer);
+        char xChar = (char) (x + 'A');
+        y++;
+        window.setInfo("Last IA move: " + y + xChar);
+        return true;
+    }
 }
